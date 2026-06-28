@@ -1,69 +1,88 @@
 # yt-dlp GUI
 
-A small desktop front-end for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with
-Python's built-in `tkinter`. Paste a URL, pick a quality and a folder, and it runs
-yt-dlp in the background while streaming live progress into the window.
+A small desktop front-end for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a
+URL (or queue up several), pick a quality and a folder, and it runs yt-dlp for you
+while showing live progress. It's a single Python file with no third-party
+dependencies — just the standard library's `tkinter`.
 
-![one-file Tkinter app]
+![Screenshot of the yt-dlp GUI](docs/screenshot.png)
 
 ## Features
-- **Fetch** — pull a video's title, duration, channel, and its *real* available
-  formats before downloading, then pick a specific format instead of guessing
-- **URL queue** — line up multiple URLs and download them one after another
-- Quality presets (best, 1080p, 720p, 480p, audio-only MP3)
-- **Subtitles** — download/embed subs in a chosen language (incl. auto-generated)
-- **SponsorBlock** — auto-remove sponsor segments (`--sponsorblock-remove`)
-- **Download archive** — skip items you've already grabbed (great for re-syncing)
-- **Update yt-dlp** button — keeps the downloader current when sites change
-- **Extra args** box — pass any yt-dlp flag the GUI doesn't expose (proxy, rate
-  limit, clip sections, …); quoted values are parsed correctly
-- **Results summary** — after a batch, a `✓ succeeded / ✗ failed` recap that
-  lists the URLs that failed
-- Choose the output folder; optional whole-playlist + metadata/thumbnail embed
-- Live log output, a real progress bar, and a **speed / ETA** readout
-- **Remembers** your settings between runs (saved to a JSON config)
-- Cancel button to stop the current download and the rest of the queue
-- Non-blocking UI (long operations run on a worker thread)
 
-### Extra args examples
-Type these into the **Extra args** box:
-- `--limit-rate 2M` — cap download speed
-- `--download-sections "*10:00-10:30"` — grab just a clip
-- `--cookies-from-browser chrome` — use your logged-in browser session
-- `-N 4` — download fragments in parallel (faster)
-
-Settings and the download archive live in `%APPDATA%\ytdlp-gui\` (Windows) or
-`~/.config/ytdlp-gui/` (macOS/Linux).
-
-> Fetched info is shown as text. Rendering the actual thumbnail image would need
-> the optional [Pillow](https://pypi.org/project/pillow/) library — left out to
-> keep this stdlib-only.
+- Queue multiple URLs and download them one after another
+- Fetch a video's title, duration, channel and real available formats before downloading
+- Quality presets (best, 1080p, 720p, 480p, audio-only MP3) or pick a specific format
+- Download subtitles in a chosen language (including auto-generated)
+- Remove sponsor segments with SponsorBlock
+- Keep a download archive so re-running a playlist skips what you already have
+- "Extra args" box to pass any yt-dlp flag the UI doesn't expose
+- Built-in "Update yt-dlp" button
+- Live progress bar with speed/ETA, and a summary of what succeeded or failed
+- Remembers your settings between runs
 
 ## Requirements
-- Python 3.9+ (uses only the standard library — `tkinter` is included)
-- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp): `py -m pip install -U yt-dlp`
-- [`ffmpeg`](https://ffmpeg.org/) on PATH (needed for merging video+audio and MP3 export)
 
-## Run
+- **Python 3.9+** (uses only the standard library; `tkinter` ships with Python)
+- **yt-dlp** — `pip install -U yt-dlp`
+- **ffmpeg** on your PATH — needed to merge video+audio and to export MP3
+  ([download](https://ffmpeg.org/download.html))
+
+On Windows, the `python` command may be intercepted by the Microsoft Store. If
+`python` doesn't work, use the `py` launcher instead (e.g. `py -m pip install -U yt-dlp`).
+
+## Usage
+
 ```
-py ytdlp_gui.py
+python ytdlp_gui.py
 ```
-or double-click `run.bat` on Windows.
+
+On Windows you can also just double-click `run.bat`.
+
+1. Paste a video URL.
+2. (Optional) Click **Fetch** to load the title and the formats actually available
+   for that video, then choose one from the **Specific** dropdown.
+3. Click **Add** to queue it, or just hit **Download** to grab the single URL.
+4. Pick a folder and any options you want, then **Download**.
+
+### Extra arguments
+
+Anything you type in the **Extra args** box is passed straight to yt-dlp, so you
+can reach features the UI doesn't have a control for:
+
+| Example | What it does |
+| --- | --- |
+| `--limit-rate 2M` | Cap the download speed |
+| `--download-sections "*10:00-10:30"` | Download just that clip |
+| `--cookies-from-browser chrome` | Use your logged-in browser session |
+| `-N 4` | Download fragments in parallel (faster) |
 
 ## How it works
-- The GUI builds a yt-dlp command from your selections and runs it as a subprocess
-  (`python -m yt_dlp ...`) — the same thing you'd type in a terminal.
-- yt-dlp's output is read line-by-line on a background **thread**, pushed through a
-  thread-safe **queue**, and drained onto the GUI by a `root.after()` timer. tkinter
-  isn't thread-safe, so the worker never touches widgets directly.
-- The progress bar is driven by parsing the `[download]  NN.N%` lines yt-dlp prints.
 
-## Legal note
-yt-dlp does **not** bypass DRM. Use this only for content you're allowed to download —
-your own uploads, Creative Commons / public-domain video, or sites whose terms permit it.
+The GUI builds a yt-dlp command from your selections and runs it as a subprocess
+(`python -m yt_dlp ...`) — the same thing you'd type in a terminal. Output is read
+line by line on a background thread and passed to the UI through a thread-safe
+queue, which the main loop drains on a timer. tkinter isn't thread-safe, so the
+worker thread never touches widgets directly. The progress bar is driven by parsing
+yt-dlp's `[download]  NN.N%` lines.
 
-## Ideas for next versions
-- A "paste from clipboard" button + auto-detect a URL on the clipboard at startup
+Settings and the download archive are stored in `%APPDATA%\ytdlp-gui\` on Windows,
+or `~/.config/ytdlp-gui/` on macOS/Linux.
+
+## A note on what this is for
+
+yt-dlp does not bypass DRM, and neither does this. Use it for content you're allowed
+to download — your own uploads, Creative Commons or public-domain video, or sites
+whose terms permit it.
+
+## Roadmap
+
+Things that could be added later:
+
+- "Paste from clipboard" button and clipboard auto-detection on startup
 - Per-item status in the queue (queued / downloading / done / failed)
-- Light/dark theme toggle
-- Package as a standalone `.exe` with PyInstaller
+- Thumbnail preview (would require Pillow)
+- Packaging as a standalone `.exe` with PyInstaller
+
+## License
+
+MIT — see [LICENSE](LICENSE).
