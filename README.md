@@ -19,7 +19,10 @@ open Help from the menu bar — your choices are remembered.*
 A prebuilt Windows `.exe` (no Python install needed) is available on the
 [Releases page](https://github.com/swissmayfield/ytdlp-gui/releases). It bundles
 yt-dlp, so it works out of the box — you only need **ffmpeg** on your PATH for
-merging video+audio and MP3 export. Or run from source (see below).
+merging video+audio and MP3 export.
+
+**macOS / Linux:** run from source (see Requirements below) or build your own
+binary with `python build.py`.
 
 ## Features
 
@@ -40,7 +43,8 @@ merging video+audio and MP3 export. Or run from source (see below).
 
 ## Requirements
 
-- **Python 3.9+** (uses only the standard library; `tkinter` ships with Python)
+- **Python 3.9+** with **tkinter** (included on Windows and the python.org macOS
+  installer; on Linux install `python3-tk` separately — see below)
 - **yt-dlp** — `pip install -U yt-dlp`
 - **ffmpeg** on your PATH — needed to merge video+audio and to export MP3
   ([download](https://ffmpeg.org/download.html))
@@ -48,12 +52,27 @@ merging video+audio and MP3 export. Or run from source (see below).
 Optional but recommended:
 
 - **[deno](https://deno.com/)** — yt-dlp uses a JavaScript runtime for YouTube
-  extraction; without one, some formats may be unavailable. `winget install DenoLand.Deno`
-- **[rclone](https://rclone.org/)** — only needed if you want the "Upload to" feature
-  (see below). `winget install Rclone.Rclone`
+  extraction; without one, some formats may be unavailable.
+- **[rclone](https://rclone.org/)** — only needed for the "Upload to" feature.
 
-On Windows, the `python` command may be intercepted by the Microsoft Store. If
-`python` doesn't work, use the `py` launcher instead (e.g. `py -m pip install -U yt-dlp`).
+### Per-OS setup
+
+**Windows** — install [Python](https://www.python.org/) (tkinter included) and
+[ffmpeg](https://ffmpeg.org/download.html), then `py -m pip install -U yt-dlp`.
+If `python` opens the Microsoft Store, use the `py` launcher instead. Optional
+tools: `winget install DenoLand.Deno Rclone.Rclone`.
+
+**macOS** (Homebrew):
+```
+brew install python-tk ffmpeg
+pip3 install -U yt-dlp
+```
+
+**Linux** (Debian/Ubuntu):
+```
+sudo apt install python3-tk ffmpeg
+pip install -U yt-dlp
+```
 
 ## Usage
 
@@ -61,7 +80,7 @@ On Windows, the `python` command may be intercepted by the Microsoft Store. If
 python ytdlp_gui.py
 ```
 
-On Windows you can also just double-click `run.bat`.
+On Windows you can double-click `run.bat`; on Linux/macOS run `./run.sh`.
 
 1. Paste a video URL.
 2. (Optional) Click **Fetch** to load the title and the formats actually available
@@ -122,16 +141,18 @@ When packaged with PyInstaller, `sys.executable` is the GUI exe rather than a
 Python interpreter, so the app calls a bundled (or PATH) `yt-dlp.exe` instead of
 `python -m yt_dlp`. See `ytdlp_base()`.
 
-## Building the .exe
+## Building a standalone binary
 
 ```
-py -m pip install -U pyinstaller
-py build.py
+pip install -U pyinstaller
+python build.py
 ```
 
-`build.py` downloads a pinned `yt-dlp.exe`, verifies its SHA-256 against the hash
-published by the yt-dlp project (aborting on mismatch), bundles it, and runs
-PyInstaller. The result is `dist/ytdlp-gui.exe`.
+`build.py` downloads the pinned yt-dlp binary for the current OS, verifies its
+SHA-256 against the hash published by the yt-dlp project (aborting on mismatch),
+bundles it, and runs PyInstaller. The result is `dist/ytdlp-gui.exe` on Windows
+or `dist/ytdlp-gui` on macOS/Linux. PyInstaller can't cross-compile, so run it on
+each OS you want a binary for.
 
 ## A note on what this is for
 

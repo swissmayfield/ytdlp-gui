@@ -44,7 +44,8 @@ def ytdlp_base():
     bundled yt-dlp.exe if present, otherwise one found on PATH.
     """
     if getattr(sys, "frozen", False):
-        bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "yt-dlp.exe")
+        name = "yt-dlp.exe" if os.name == "nt" else "yt-dlp"
+        bundled = os.path.join(getattr(sys, "_MEIPASS", ""), name)
         if os.path.exists(bundled):
             return [bundled]
         found = shutil.which("yt-dlp")
@@ -100,6 +101,15 @@ THEMES = {
         "log_bg": "#111111", "log_fg": "#dddddd", "info": "#4ec9b0",
     },
 }
+
+# Platform-appropriate UI and monospace fonts. Tk falls back gracefully if a
+# family is missing, but picking sensible per-OS defaults looks intentional.
+if sys.platform == "darwin":
+    UI_FONT, MONO_FONT = "Helvetica Neue", "Menlo"
+elif os.name == "nt":
+    UI_FONT, MONO_FONT = "Segoe UI", "Consolas"
+else:
+    UI_FONT, MONO_FONT = "DejaVu Sans", "DejaVu Sans Mono"
 
 APP_VERSION = "1.0"
 GITHUB_URL = "https://github.com/swissmayfield/ytdlp-gui"
@@ -359,7 +369,7 @@ class YtDlpGui:
         ttk.Label(frm, text="Output:").grid(row=r, column=0, sticky="w", **pad)
         r += 1
         self.log = tk.Text(frm, height=11, wrap="word", state="disabled",
-                           bg="#111", fg="#ddd", font=("Consolas", 9))
+                           bg="#111", fg="#ddd", font=(MONO_FONT, 9))
         self.log.grid(row=r, column=0, columnspan=3, sticky="nsew", **pad)
         frm.rowconfigure(r, weight=1)
         scroll = ttk.Scrollbar(frm, command=self.log.yview)
@@ -486,7 +496,7 @@ class YtDlpGui:
         win.transient(self.root)
         txt = tk.Text(win, wrap="word", width=66, height=16, relief="flat",
                       bg=pal["surface"], fg=pal["fg"], insertbackground=pal["fg"],
-                      padx=10, pady=10, font=("Segoe UI", 9))
+                      padx=10, pady=10, font=(UI_FONT, 9))
         txt.pack(fill="both", expand=True, padx=10, pady=(10, 4))
         txt.insert("1.0", body)
         txt.configure(state="disabled")
@@ -511,16 +521,16 @@ class YtDlpGui:
         body = ttk.Frame(win)
         body.pack(fill="both", expand=True, padx=10, pady=(0, 6))
         txt = tk.Text(body, wrap="word", relief="flat", bg=pal["surface"], fg=pal["fg"],
-                      padx=10, pady=8, font=("Segoe UI", 9), cursor="arrow")
+                      padx=10, pady=8, font=(UI_FONT, 9), cursor="arrow")
         scr = ttk.Scrollbar(body, command=txt.yview)
         txt["yscrollcommand"] = scr.set
         scr.pack(side="right", fill="y")
         txt.pack(side="left", fill="both", expand=True)
 
-        txt.tag_configure("cat", font=("Segoe UI", 10, "bold"),
+        txt.tag_configure("cat", font=(UI_FONT, 10, "bold"),
                           foreground=pal["info"], spacing1=10, spacing3=4)
         txt.tag_configure("flag", foreground=pal["accent"],
-                          font=("Consolas", 9, "bold"), underline=True)
+                          font=(MONO_FONT, 9, "bold"), underline=True)
         idx = 0
         for category, items in EXTRA_ARGS_GLOSSARY:
             txt.insert("end", category + "\n", "cat")

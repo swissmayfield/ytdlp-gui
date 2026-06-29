@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings or they won't run on Linux/macOS.
+*.sh text eol=lf
+
+# Images are binary; never normalize them.
+*.png binary
