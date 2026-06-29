@@ -79,6 +79,48 @@ THEMES = {
     },
 }
 
+APP_VERSION = "1.0"
+GITHUB_URL = "https://github.com/swissmayfield/ytdlp-gui"
+
+HELP_HOWTO = """\
+1. Paste a video URL at the top.
+2. (Optional) Click Fetch to load the title and the formats available for that
+   video, then pick one under "Specific" (Advanced view).
+3. Click Add to queue it, or just click Download to grab the single URL.
+4. Choose a Format and a Save-to folder, then click Download.
+
+Use the View menu to switch between Simple and Advanced, or toggle Dark mode.
+If a site stops working, try Tools > Update yt-dlp.
+
+Note: this does not bypass DRM. Use it only for content you're allowed
+to download - your own uploads, Creative Commons / public-domain video,
+or sites whose terms permit it.
+"""
+
+HELP_EXTRA = """\
+Anything in the "Extra args" box (Advanced view) is passed straight to yt-dlp:
+
+  --limit-rate 2M                     cap the download speed
+  --download-sections "*10:00-10:30"  download just that clip
+  --cookies-from-browser chrome       use your logged-in browser session
+  -N 4                                download fragments in parallel (faster)
+
+To upload finished files to a remote, set one up once with `rclone config`,
+then put e.g. "gdrive:Movies" in the Upload to box (Advanced view).
+"""
+
+HELP_ABOUT = f"""\
+yt-dlp GUI   v{APP_VERSION}
+
+A small, dependency-free desktop front-end for yt-dlp, built with Python's
+standard-library tkinter.
+
+{GITHUB_URL}
+
+yt-dlp does not bypass DRM; use this only for content you're allowed
+to download.
+"""
+
 
 class YtDlpGui:
     def __init__(self, root):
@@ -119,6 +161,7 @@ class YtDlpGui:
         self.rclone_var       = tk.StringVar(value=cfg.get("rclone_remote", ""))
         self.rclone_move_var  = tk.BooleanVar(value=cfg.get("rclone_move", False))
         self.dark_var         = tk.BooleanVar(value=cfg.get("dark", False))
+        self.view_var         = tk.StringVar(value=cfg.get("view", "simple"))
         self.status_var       = tk.StringVar(value="Idle")
 
         if self.format_var.get() not in FORMAT_PRESETS:
@@ -126,6 +169,7 @@ class YtDlpGui:
 
         self._build_widgets()
         self._apply_theme()
+        self._apply_view()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._drain_queue)
 
@@ -133,9 +177,11 @@ class YtDlpGui:
     def _build_widgets(self):
         pad = {"padx": 8, "pady": 4}
         self.style = ttk.Style(self.root)
+        self._build_menu()
         frm = ttk.Frame(self.root, padding=10)
         frm.pack(fill="both", expand=True)
         frm.columnconfigure(1, weight=1)
+        self.advanced_widgets = []   # rows hidden in Simple view
         r = 0
 
         # URL row + Fetch / Add buttons
@@ -181,11 +227,13 @@ class YtDlpGui:
                      state="readonly").grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
         r += 1
 
-        # Specific format (populated after Fetch)
-        ttk.Label(frm, text="Specific:").grid(row=r, column=0, sticky="w", **pad)
+        # Specific format (populated after Fetch) -- advanced only
+        spec_lbl = ttk.Label(frm, text="Specific:")
+        spec_lbl.grid(row=r, column=0, sticky="w", **pad)
         self.specific_combo = ttk.Combobox(frm, textvariable=self.specific_var,
                                             values=[USE_PRESET], state="readonly")
         self.specific_combo.grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
+        self.advanced_widgets += [spec_lbl, self.specific_combo]
         r += 1
 
         # Folder row
@@ -194,50 +242,54 @@ class YtDlpGui:
         ttk.Button(frm, text="Browse…", command=self._choose_dir).grid(row=r, column=2, **pad)
         r += 1
 
-        # Options group
+        # Basic options -- always visible
         opts = ttk.LabelFrame(frm, text="Options", padding=6)
         opts.grid(row=r, column=0, columnspan=3, sticky="ew", **pad)
-        row1 = ttk.Frame(opts); row1.pack(fill="x")
-        ttk.Checkbutton(row1, text="Whole playlist", variable=self.playlist_var).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(row1, text="Embed metadata + thumbnail", variable=self.metadata_var).pack(side="left")
-        row2 = ttk.Frame(opts); row2.pack(fill="x", pady=(4, 0))
-        ttk.Checkbutton(row2, text="Subtitles", variable=self.subs_var).pack(side="left")
-        ttk.Label(row2, text="lang:").pack(side="left", padx=(4, 2))
-        ttk.Entry(row2, textvariable=self.sublang_var, width=8).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(row2, text="Remove sponsors", variable=self.sponsorblock_var).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(row2, text="Skip already-downloaded", variable=self.archive_var).pack(side="left")
+        ttk.Checkbutton(opts, text="Whole playlist", variable=self.playlist_var).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(opts, text="Embed metadata + thumbnail", variable=self.metadata_var).pack(side="left")
+        r += 1
+
+        # Advanced options -- hidden in Simple view
+        adv = ttk.LabelFrame(frm, text="Advanced options", padding=6)
+        adv.grid(row=r, column=0, columnspan=3, sticky="ew", **pad)
+        ttk.Checkbutton(adv, text="Subtitles", variable=self.subs_var).pack(side="left")
+        ttk.Label(adv, text="lang:").pack(side="left", padx=(4, 2))
+        ttk.Entry(adv, textvariable=self.sublang_var, width=8).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(adv, text="Remove sponsors", variable=self.sponsorblock_var).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(adv, text="Skip already-downloaded", variable=self.archive_var).pack(side="left")
+        self.advanced_widgets.append(adv)
         r += 1
 
         # Extra yt-dlp arguments (advanced, optional). Anything typed here is
         # passed straight through to yt-dlp, so the GUI can reach any flag it
         # doesn't have a checkbox for (proxy, rate limit, clip sections, etc.).
-        ttk.Label(frm, text="Extra args:").grid(row=r, column=0, sticky="w", **pad)
+        extra_lbl = ttk.Label(frm, text="Extra args:")
+        extra_lbl.grid(row=r, column=0, sticky="w", **pad)
         extra_entry = ttk.Entry(frm, textvariable=self.extra_var)
         extra_entry.grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
+        self.advanced_widgets += [extra_lbl, extra_entry]
         r += 1
 
         # Optional: upload each finished file to a remote with rclone. The remote
         # must already be set up via `rclone config` (e.g. "gdrive:Movies").
-        ttk.Label(frm, text="Upload to:").grid(row=r, column=0, sticky="w", **pad)
+        up_lbl = ttk.Label(frm, text="Upload to:")
+        up_lbl.grid(row=r, column=0, sticky="w", **pad)
         up = ttk.Frame(frm)
         up.grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
         up.columnconfigure(0, weight=1)
         ttk.Entry(up, textvariable=self.rclone_var).grid(row=0, column=0, sticky="ew")
         ttk.Checkbutton(up, text="delete local after upload",
                         variable=self.rclone_move_var).grid(row=0, column=1, padx=(8, 0))
+        self.advanced_widgets += [up_lbl, up]
         r += 1
 
-        # Action buttons
+        # Action buttons (Update yt-dlp and Dark mode now live in the menu bar)
         btns = ttk.Frame(frm)
         btns.grid(row=r, column=0, columnspan=3, sticky="ew", **pad)
         self.download_btn = ttk.Button(btns, text="Download", command=self._start_download)
         self.download_btn.pack(side="left")
         self.cancel_btn = ttk.Button(btns, text="Cancel", command=self._cancel, state="disabled")
         self.cancel_btn.pack(side="left", padx=8)
-        self.update_btn = ttk.Button(btns, text="Update yt-dlp", command=self._update_ytdlp)
-        self.update_btn.pack(side="right")
-        ttk.Checkbutton(btns, text="Dark mode", variable=self.dark_var,
-                        command=self._apply_theme).pack(side="right", padx=(0, 12))
         r += 1
 
         # Progress + status
@@ -300,6 +352,86 @@ class YtDlpGui:
                                   selectbackground=pal["accent"], selectforeground=pal["fg"])
         self.info_label.configure(foreground=pal["info"])
 
+    # -- Menu bar / views ---------------------------------------------------
+    def _build_menu(self):
+        """Native menu bar: View / Tools / Help."""
+        menubar = tk.Menu(self.root)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_radiobutton(label="Simple", variable=self.view_var,
+                                  value="simple", command=self._apply_view)
+        view_menu.add_radiobutton(label="Advanced", variable=self.view_var,
+                                  value="advanced", command=self._apply_view)
+        view_menu.add_separator()
+        view_menu.add_checkbutton(label="Dark mode", variable=self.dark_var,
+                                  command=self._apply_theme)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Update yt-dlp", command=self._update_ytdlp)
+        tools_menu.add_command(label="Open download folder", command=self._open_download_folder)
+        tools_menu.add_command(label="Open settings folder", command=self._open_config_folder)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="How to use", command=self._help_howto)
+        help_menu.add_command(label="Extra-args examples", command=self._help_extra)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=self._help_about)
+        menubar.add_cascade(label="Help", menu=help_menu)
+
+        self.root.config(menu=menubar)
+
+    def _apply_view(self):
+        """Show or hide the advanced rows for the current Simple/Advanced choice."""
+        advanced = self.view_var.get() == "advanced"
+        for w in self.advanced_widgets:
+            w.grid() if advanced else w.grid_remove()
+
+    def _open_download_folder(self):
+        self._open_path(self.dir_var.get())
+
+    def _open_config_folder(self):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        self._open_path(CONFIG_DIR)
+
+    @staticmethod
+    def _open_path(path):
+        try:
+            if os.name == "nt":
+                os.startfile(path)  # noqa: S606 - opening a local folder in Explorer
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+        except OSError:
+            pass
+
+    def _help_howto(self):
+        self._show_help_dialog("How to use", HELP_HOWTO)
+
+    def _help_extra(self):
+        self._show_help_dialog("Extra-args examples", HELP_EXTRA)
+
+    def _help_about(self):
+        self._show_help_dialog("About", HELP_ABOUT)
+
+    def _show_help_dialog(self, title, body):
+        """Small themed, read-only text popup used for the Help menu items."""
+        pal = THEMES["dark" if self.dark_var.get() else "light"]
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.configure(bg=pal["bg"])
+        win.transient(self.root)
+        txt = tk.Text(win, wrap="word", width=66, height=16, relief="flat",
+                      bg=pal["surface"], fg=pal["fg"], insertbackground=pal["fg"],
+                      padx=10, pady=10, font=("Segoe UI", 9))
+        txt.pack(fill="both", expand=True, padx=10, pady=(10, 4))
+        txt.insert("1.0", body)
+        txt.configure(state="disabled")
+        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
+        win.bind("<Escape>", lambda _e: win.destroy())
+
     # -- Queue management ---------------------------------------------------
     def _add_to_queue(self):
         url = self.url_var.get().strip()
@@ -336,6 +468,7 @@ class YtDlpGui:
             "rclone_remote": self.rclone_var.get(),
             "rclone_move": self.rclone_move_var.get(),
             "dark": self.dark_var.get(),
+            "view": self.view_var.get(),
         }
         try:
             os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -617,7 +750,7 @@ class YtDlpGui:
         self.busy = busy
         state = "disabled" if busy else "normal"
         for w in (self.download_btn, self.fetch_btn, self.add_btn,
-                  self.remove_btn, self.clear_btn, self.update_btn):
+                  self.remove_btn, self.clear_btn):
             w["state"] = state
         # Cancel only makes sense while a download queue is running.
         self.cancel_btn["state"] = "normal" if (busy and downloading) else "disabled"

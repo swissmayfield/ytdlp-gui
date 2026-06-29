@@ -5,10 +5,11 @@ URL (or queue up several), pick a quality and a folder, and it runs yt-dlp for y
 while showing live progress. It's a single Python file with no third-party
 dependencies — just the standard library's `tkinter`.
 
-![yt-dlp GUI — light theme](docs/screenshot.png)
-![yt-dlp GUI — dark theme](docs/screenshot-dark.png)
+![yt-dlp GUI — Simple view (light)](docs/screenshot.png)
+![yt-dlp GUI — Advanced view (dark)](docs/screenshot-dark.png)
 
-*Light and dark themes — toggle with the **Dark mode** checkbox; your choice is remembered.*
+*Simple view (light) and Advanced view (dark). Switch views, toggle the theme, and
+open Help from the menu bar — your choices are remembered.*
 
 ## Features
 
@@ -21,6 +22,8 @@ dependencies — just the standard library's `tkinter`.
 - "Extra args" box to pass any yt-dlp flag the UI doesn't expose
 - Built-in "Update yt-dlp" button
 - Live progress bar with speed/ETA, and a summary of what succeeded or failed
+- Simple / Advanced views to hide or show the power-user options
+- Menu bar with in-app Help, plus Tools (update yt-dlp, open download/settings folders)
 - Light and dark themes, toggled in-app
 - Remembers your settings between runs
 
@@ -54,6 +57,9 @@ On Windows you can also just double-click `run.bat`.
    for that video, then choose one from the **Specific** dropdown.
 3. Click **Add** to queue it, or just hit **Download** to grab the single URL.
 4. Pick a folder and any options you want, then **Download**.
+
+Use the **View** menu to switch between Simple and Advanced, toggle Dark mode, or
+find **Help** for a quick how-to and the extra-args examples.
 
 ### Extra arguments
 
