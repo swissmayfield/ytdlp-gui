@@ -64,6 +64,21 @@ CONFIG_DIR   = os.path.join(
 CONFIG_PATH  = os.path.join(CONFIG_DIR, "config.json")
 ARCHIVE_PATH = os.path.join(CONFIG_DIR, "archive.txt")
 
+# Light/dark colour palettes. Applied on top of ttk's "clam" theme, which (unlike
+# the native Windows themes) honours custom colours for buttons, entries, etc.
+THEMES = {
+    "light": {
+        "bg": "#f0f0f0", "surface": "#ffffff", "fg": "#1a1a1a",
+        "accent": "#2d7d46", "active": "#dcdcdc",
+        "log_bg": "#fbfbfb", "log_fg": "#1a1a1a", "info": "#0a7d57",
+    },
+    "dark": {
+        "bg": "#1e1e1e", "surface": "#2b2b2b", "fg": "#e6e6e6",
+        "accent": "#3d7eaa", "active": "#3a3a3a",
+        "log_bg": "#111111", "log_fg": "#dddddd", "info": "#4ec9b0",
+    },
+}
+
 
 class YtDlpGui:
     def __init__(self, root):
@@ -103,18 +118,21 @@ class YtDlpGui:
         self.extra_var        = tk.StringVar(value=cfg.get("extra", ""))
         self.rclone_var       = tk.StringVar(value=cfg.get("rclone_remote", ""))
         self.rclone_move_var  = tk.BooleanVar(value=cfg.get("rclone_move", False))
+        self.dark_var         = tk.BooleanVar(value=cfg.get("dark", False))
         self.status_var       = tk.StringVar(value="Idle")
 
         if self.format_var.get() not in FORMAT_PRESETS:
             self.format_var.set("Best quality (video + audio)")
 
         self._build_widgets()
+        self._apply_theme()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._drain_queue)
 
     # -- UI layout ----------------------------------------------------------
     def _build_widgets(self):
         pad = {"padx": 8, "pady": 4}
+        self.style = ttk.Style(self.root)
         frm = ttk.Frame(self.root, padding=10)
         frm.pack(fill="both", expand=True)
         frm.columnconfigure(1, weight=1)
@@ -135,8 +153,8 @@ class YtDlpGui:
         r += 1
 
         # Fetched-info line
-        ttk.Label(frm, textvariable=self.info_var, foreground="#0a7").grid(
-            row=r, column=1, columnspan=2, sticky="w", padx=8)
+        self.info_label = ttk.Label(frm, textvariable=self.info_var)
+        self.info_label.grid(row=r, column=1, columnspan=2, sticky="w", padx=8)
         r += 1
 
         # Queue list + side buttons
@@ -218,6 +236,8 @@ class YtDlpGui:
         self.cancel_btn.pack(side="left", padx=8)
         self.update_btn = ttk.Button(btns, text="Update yt-dlp", command=self._update_ytdlp)
         self.update_btn.pack(side="right")
+        ttk.Checkbutton(btns, text="Dark mode", variable=self.dark_var,
+                        command=self._apply_theme).pack(side="right", padx=(0, 12))
         r += 1
 
         # Progress + status
@@ -238,6 +258,47 @@ class YtDlpGui:
         scroll = ttk.Scrollbar(frm, command=self.log.yview)
         scroll.grid(row=r, column=3, sticky="ns")
         self.log["yscrollcommand"] = scroll.set
+
+    def _apply_theme(self):
+        """Recolour every widget for the current light/dark choice."""
+        pal = THEMES["dark" if self.dark_var.get() else "light"]
+        s = self.style
+        s.theme_use("clam")  # clam honours custom colours; the native themes don't
+        self.root.configure(bg=pal["bg"])
+
+        s.configure(".", background=pal["bg"], foreground=pal["fg"],
+                    fieldbackground=pal["surface"], bordercolor=pal["active"],
+                    lightcolor=pal["bg"], darkcolor=pal["bg"])
+        s.configure("TFrame", background=pal["bg"])
+        s.configure("TLabel", background=pal["bg"], foreground=pal["fg"])
+        s.configure("TLabelframe", background=pal["bg"])
+        s.configure("TLabelframe.Label", background=pal["bg"], foreground=pal["fg"])
+        s.configure("TCheckbutton", background=pal["bg"], foreground=pal["fg"])
+        s.map("TCheckbutton", background=[("active", pal["bg"])])
+        s.configure("TButton", background=pal["surface"], foreground=pal["fg"])
+        s.map("TButton",
+              background=[("active", pal["active"]), ("disabled", pal["bg"])],
+              foreground=[("disabled", pal["active"])])
+        s.configure("TEntry", fieldbackground=pal["surface"], foreground=pal["fg"],
+                    insertcolor=pal["fg"])
+        s.configure("TCombobox", fieldbackground=pal["surface"], foreground=pal["fg"],
+                    arrowcolor=pal["fg"])
+        s.map("TCombobox", fieldbackground=[("readonly", pal["surface"])],
+              foreground=[("readonly", pal["fg"])])
+        s.configure("Horizontal.TProgressbar", background=pal["accent"],
+                    troughcolor=pal["surface"])
+        s.configure("TScrollbar", background=pal["surface"], troughcolor=pal["bg"])
+
+        # The combobox dropdown is a separate Tk listbox styled via the option DB.
+        self.root.option_add("*TCombobox*Listbox.background", pal["surface"])
+        self.root.option_add("*TCombobox*Listbox.foreground", pal["fg"])
+        self.root.option_add("*TCombobox*Listbox.selectBackground", pal["accent"])
+
+        # Raw tk widgets aren't covered by ttk styles, so set them directly.
+        self.log.configure(bg=pal["log_bg"], fg=pal["log_fg"], insertbackground=pal["log_fg"])
+        self.queue_list.configure(bg=pal["surface"], fg=pal["fg"],
+                                  selectbackground=pal["accent"], selectforeground=pal["fg"])
+        self.info_label.configure(foreground=pal["info"])
 
     # -- Queue management ---------------------------------------------------
     def _add_to_queue(self):
@@ -274,6 +335,7 @@ class YtDlpGui:
             "extra": self.extra_var.get(),
             "rclone_remote": self.rclone_var.get(),
             "rclone_move": self.rclone_move_var.get(),
+            "dark": self.dark_var.get(),
         }
         try:
             os.makedirs(CONFIG_DIR, exist_ok=True)

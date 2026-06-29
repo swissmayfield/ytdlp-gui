@@ -5,7 +5,10 @@ URL (or queue up several), pick a quality and a folder, and it runs yt-dlp for y
 while showing live progress. It's a single Python file with no third-party
 dependencies — just the standard library's `tkinter`.
 
-![Screenshot of the yt-dlp GUI](docs/screenshot.png)
+![yt-dlp GUI — light theme](docs/screenshot.png)
+![yt-dlp GUI — dark theme](docs/screenshot-dark.png)
+
+*Light and dark themes — toggle with the **Dark mode** checkbox; your choice is remembered.*
 
 ## Features
 
@@ -18,6 +21,7 @@ dependencies — just the standard library's `tkinter`.
 - "Extra args" box to pass any yt-dlp flag the UI doesn't expose
 - Built-in "Update yt-dlp" button
 - Live progress bar with speed/ETA, and a summary of what succeeded or failed
+- Light and dark themes, toggled in-app
 - Remembers your settings between runs
 
 ## Requirements
