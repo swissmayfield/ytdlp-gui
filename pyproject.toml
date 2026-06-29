@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ytdlp-gui"
+version = "1.0.0"
+description = "A small, dependency-free desktop GUI for yt-dlp."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "swissmayfield" }]
+dependencies = ["yt-dlp"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Environment :: Win32 (MS Windows)",
+    "Topic :: Multimedia :: Video",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5", "bandit>=1.7", "pip-audit>=2.7"]
+
+[project.urls]
+Homepage = "https://github.com/swissmayfield/ytdlp-gui"
+
+[project.scripts]
+ytdlp-gui = "ytdlp_gui:main"
+
+[tool.setuptools]
+py-modules = ["ytdlp_gui"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.bandit]
+# subprocess is used intentionally with argument lists (never shell=True), and the
+# try/except/pass blocks are deliberate (e.g. a failed settings write must not
+# interrupt the user). These have been reviewed; see the Security notes in README.
+# (The one urlopen — a constant HTTPS URL in build.py — is suppressed inline.)
+skips = ["B404", "B603", "B606", "B607", "B110"]

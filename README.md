@@ -1,5 +1,9 @@
 # yt-dlp GUI
 
+[![CI](https://github.com/swissmayfield/ytdlp-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/swissmayfield/ytdlp-gui/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+
 A small desktop front-end for [yt-dlp](https://github.com/yt-dlp/yt-dlp). Paste a
 URL (or queue up several), pick a quality and a folder, and it runs yt-dlp for you
 while showing live progress. It's a single Python file with no third-party

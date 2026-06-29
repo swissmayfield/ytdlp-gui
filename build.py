@@ -40,7 +40,9 @@ def ensure_ytdlp():
     os.makedirs(ASSETS, exist_ok=True)
     if not os.path.exists(YTDLP_EXE) or sha256(YTDLP_EXE) != YTDLP_SHA256:
         print(f"Downloading yt-dlp {YTDLP_VERSION} ...")
-        urllib.request.urlretrieve(YTDLP_URL, YTDLP_EXE)
+        # URL is a constant HTTPS GitHub release link; the result is SHA-256
+        # verified just below, so a tampered download is caught.
+        urllib.request.urlretrieve(YTDLP_URL, YTDLP_EXE)  # nosec B310
     digest = sha256(YTDLP_EXE)
     if digest != YTDLP_SHA256:
         raise SystemExit(

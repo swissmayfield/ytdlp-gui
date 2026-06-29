@@ -23,17 +23,17 @@ Why it's built this way:
 Run it:  py ytdlp_gui.py
 """
 
-import os
-import re
-import sys
 import json
+import os
+import queue
+import re
 import shlex
 import shutil
-import threading
 import subprocess
-import queue
+import sys
+import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 
 def ytdlp_base():
@@ -525,7 +525,8 @@ class YtDlpGui:
         for category, items in EXTRA_ARGS_GLOSSARY:
             txt.insert("end", category + "\n", "cat")
             for flag, desc in items:
-                tag = f"flag{idx}"; idx += 1
+                tag = f"flag{idx}"
+                idx += 1
                 txt.insert("end", "   ")
                 txt.insert("end", flag, ("flag", tag))
                 txt.insert("end", "\n      " + desc + "\n")
