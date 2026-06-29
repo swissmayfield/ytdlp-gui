@@ -7,6 +7,7 @@ What it does:
     so you can pick a specific one instead of guessing.
   - Optional subtitles, SponsorBlock segment removal, and a download archive
     (skip things you've already grabbed).
+  - Optionally upload each finished file to a remote (cloud / SFTP / S3) via rclone.
   - An "Update yt-dlp" button keeps the downloader current when sites change.
   - Downloads run one at a time with a live progress bar and speed / ETA readout.
   - Your settings are remembered between runs.
@@ -100,6 +101,8 @@ class YtDlpGui:
         self.sponsorblock_var = tk.BooleanVar(value=cfg.get("sponsorblock", False))
         self.archive_var      = tk.BooleanVar(value=cfg.get("archive", False))
         self.extra_var        = tk.StringVar(value=cfg.get("extra", ""))
+        self.rclone_var       = tk.StringVar(value=cfg.get("rclone_remote", ""))
+        self.rclone_move_var  = tk.BooleanVar(value=cfg.get("rclone_move", False))
         self.status_var       = tk.StringVar(value="Idle")
 
         if self.format_var.get() not in FORMAT_PRESETS:
@@ -195,6 +198,17 @@ class YtDlpGui:
         extra_entry.grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
         r += 1
 
+        # Optional: upload each finished file to a remote with rclone. The remote
+        # must already be set up via `rclone config` (e.g. "gdrive:Movies").
+        ttk.Label(frm, text="Upload to:").grid(row=r, column=0, sticky="w", **pad)
+        up = ttk.Frame(frm)
+        up.grid(row=r, column=1, columnspan=2, sticky="ew", **pad)
+        up.columnconfigure(0, weight=1)
+        ttk.Entry(up, textvariable=self.rclone_var).grid(row=0, column=0, sticky="ew")
+        ttk.Checkbutton(up, text="delete local after upload",
+                        variable=self.rclone_move_var).grid(row=0, column=1, padx=(8, 0))
+        r += 1
+
         # Action buttons
         btns = ttk.Frame(frm)
         btns.grid(row=r, column=0, columnspan=3, sticky="ew", **pad)
@@ -258,6 +272,8 @@ class YtDlpGui:
             "sponsorblock": self.sponsorblock_var.get(),
             "archive": self.archive_var.get(),
             "extra": self.extra_var.get(),
+            "rclone_remote": self.rclone_var.get(),
+            "rclone_move": self.rclone_move_var.get(),
         }
         try:
             os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -383,6 +399,14 @@ class YtDlpGui:
                 cmd += shlex.split(extra)
             except ValueError:
                 cmd += extra.split()  # unbalanced quotes -> fall back to naive split
+
+        # Optional rclone upload. yt-dlp's --exec runs after the file is finished
+        # and moved to its final name; %(filepath)q is the shell-quoted path, so
+        # this becomes e.g.  rclone copy "C:\...\video.mp4" "gdrive:Movies"
+        remote = self.rclone_var.get().strip()
+        if remote:
+            verb = "move" if self.rclone_move_var.get() else "copy"
+            cmd += ["--exec", f'after_move:rclone {verb} %(filepath)q "{remote}"']
 
         out_template = os.path.join(self.dir_var.get(), "%(title)s [%(id)s].%(ext)s")
         cmd += ["-o", out_template, url]

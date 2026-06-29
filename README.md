@@ -27,6 +27,13 @@ dependencies — just the standard library's `tkinter`.
 - **ffmpeg** on your PATH — needed to merge video+audio and to export MP3
   ([download](https://ffmpeg.org/download.html))
 
+Optional but recommended:
+
+- **[deno](https://deno.com/)** — yt-dlp uses a JavaScript runtime for YouTube
+  extraction; without one, some formats may be unavailable. `winget install DenoLand.Deno`
+- **[rclone](https://rclone.org/)** — only needed if you want the "Upload to" feature
+  (see below). `winget install Rclone.Rclone`
+
 On Windows, the `python` command may be intercepted by the Microsoft Store. If
 `python` doesn't work, use the `py` launcher instead (e.g. `py -m pip install -U yt-dlp`).
 
@@ -55,6 +62,23 @@ can reach features the UI doesn't have a control for:
 | `--download-sections "*10:00-10:30"` | Download just that clip |
 | `--cookies-from-browser chrome` | Use your logged-in browser session |
 | `-N 4` | Download fragments in parallel (faster) |
+
+### Uploading to a remote (rclone)
+
+The **Upload to** box lets you send each finished file straight to a cloud or
+remote storage backend instead of leaving it on your computer. It uses
+[rclone](https://rclone.org/), which supports Google Drive, Dropbox, S3, OneDrive,
+SFTP and ~70 other backends.
+
+1. Install rclone (see Requirements) and set up a remote once: `rclone config`.
+2. Put the remote and path in the **Upload to** box, e.g. `gdrive:Movies`.
+3. Tick **delete local after upload** if you don't want a local copy kept.
+
+Under the hood this adds `--exec "after_move:rclone copy <file> <remote>"` to the
+yt-dlp command, so the upload runs automatically once each download finishes.
+
+For a NAS or network share you don't even need rclone — just set the **Save to**
+folder to a UNC path like `\\TOWER\media` or a mapped drive.
 
 ## How it works
 
