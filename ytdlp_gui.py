@@ -97,17 +97,50 @@ to download - your own uploads, Creative Commons / public-domain video,
 or sites whose terms permit it.
 """
 
-HELP_EXTRA = """\
-Anything in the "Extra args" box (Advanced view) is passed straight to yt-dlp:
-
-  --limit-rate 2M                     cap the download speed
-  --download-sections "*10:00-10:30"  download just that clip
-  --cookies-from-browser chrome       use your logged-in browser session
-  -N 4                                download fragments in parallel (faster)
-
-To upload finished files to a remote, set one up once with `rclone config`,
-then put e.g. "gdrive:Movies" in the Upload to box (Advanced view).
-"""
+# Reference of useful yt-dlp flags, grouped by purpose. Shown in the in-app
+# glossary; clicking an entry drops the flag into the Extra args box. Values are
+# sample defaults the user can edit. Options the form already controls (output
+# path, format, subtitles, --no-playlist) are intentionally left out.
+EXTRA_ARGS_GLOSSARY = [
+    ("Speed & network", [
+        ("-N 4", "Download video fragments in parallel (often much faster)."),
+        ("--limit-rate 2M", "Cap download speed (2M = 2 MB/s, 500K = 500 KB/s)."),
+        ("--retries 10", "Retry a failed download up to N times."),
+        ("--proxy http://host:port", "Route the download through a proxy server."),
+    ]),
+    ("Clips & sections", [
+        ('--download-sections "*10:00-10:30"', "Download only that time range of the video."),
+        ("--force-keyframes-at-cuts", "Cleaner cuts for --download-sections (re-encodes at the cut)."),
+    ]),
+    ("Access & login", [
+        ("--cookies-from-browser chrome", "Use your logged-in browser session (age-gated / members-only)."),
+        ("--cookies cookies.txt", "Use an exported cookies.txt file instead."),
+        ("--geo-bypass", "Attempt to bypass simple geographic restrictions."),
+    ]),
+    ("Output & metadata", [
+        ("--write-thumbnail", "Also save the thumbnail as a separate image file."),
+        ("--write-description", "Save the video description to a .description file."),
+        ("--write-info-json", "Save all metadata to a .info.json file."),
+        ("--embed-chapters", "Embed chapter markers into the file."),
+        ("--restrict-filenames", "Use safe ASCII-only characters in filenames."),
+    ]),
+    ("Format & container", [
+        ('-S "res:1080"', "Prefer formats up to 1080p (sort by resolution)."),
+        ("--remux-video mp4", "Repackage into MP4 without re-encoding (fast)."),
+        ("--recode-video mp4", "Re-encode into MP4 for compatibility (slow)."),
+        ("--merge-output-format mkv", "Use MKV as the container for merged video+audio."),
+    ]),
+    ("Playlists", [
+        ("--playlist-items 1-5,8", "Download only these items from a playlist."),
+        ("--max-downloads 10", "Stop after N downloads."),
+        ("--playlist-reverse", "Download a playlist in reverse order."),
+        ("--dateafter 20240101", "Only download videos uploaded on/after this date."),
+    ]),
+    ("SponsorBlock", [
+        ("--sponsorblock-remove all", "Remove all SponsorBlock categories, not just the defaults."),
+        ("--sponsorblock-mark all", "Mark segments as chapters instead of removing them."),
+    ]),
+]
 
 HELP_ABOUT = f"""\
 yt-dlp GUI   v{APP_VERSION}
@@ -375,7 +408,7 @@ class YtDlpGui:
 
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="How to use", command=self._help_howto)
-        help_menu.add_command(label="Extra-args examples", command=self._help_extra)
+        help_menu.add_command(label="Extra-args glossary", command=self._show_glossary_dialog)
         help_menu.add_separator()
         help_menu.add_command(label="About", command=self._help_about)
         menubar.add_cascade(label="Help", menu=help_menu)
@@ -410,9 +443,6 @@ class YtDlpGui:
     def _help_howto(self):
         self._show_help_dialog("How to use", HELP_HOWTO)
 
-    def _help_extra(self):
-        self._show_help_dialog("Extra-args examples", HELP_EXTRA)
-
     def _help_about(self):
         self._show_help_dialog("About", HELP_ABOUT)
 
@@ -431,6 +461,59 @@ class YtDlpGui:
         txt.configure(state="disabled")
         ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
         win.bind("<Escape>", lambda _e: win.destroy())
+
+    def _show_glossary_dialog(self):
+        """Scrollable, clickable reference of useful yt-dlp flags."""
+        pal = THEMES["dark" if self.dark_var.get() else "light"]
+        win = tk.Toplevel(self.root)
+        win.title("Extra-args glossary")
+        win.configure(bg=pal["bg"])
+        win.geometry("660x580")
+        win.transient(self.root)
+
+        ttk.Label(win, wraplength=620, foreground=pal["info"],
+                  text="Click any flag to add it to the Extra args box (switches to "
+                       "Advanced view). Flags are appended to yt-dlp's command, so avoid "
+                       "options the form already sets (Format, Save to, Subtitles).").pack(
+            fill="x", padx=10, pady=(10, 4))
+
+        body = ttk.Frame(win)
+        body.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+        txt = tk.Text(body, wrap="word", relief="flat", bg=pal["surface"], fg=pal["fg"],
+                      padx=10, pady=8, font=("Segoe UI", 9), cursor="arrow")
+        scr = ttk.Scrollbar(body, command=txt.yview)
+        txt["yscrollcommand"] = scr.set
+        scr.pack(side="right", fill="y")
+        txt.pack(side="left", fill="both", expand=True)
+
+        txt.tag_configure("cat", font=("Segoe UI", 10, "bold"),
+                          foreground=pal["info"], spacing1=10, spacing3=4)
+        txt.tag_configure("flag", foreground=pal["accent"],
+                          font=("Consolas", 9, "bold"), underline=True)
+        idx = 0
+        for category, items in EXTRA_ARGS_GLOSSARY:
+            txt.insert("end", category + "\n", "cat")
+            for flag, desc in items:
+                tag = f"flag{idx}"; idx += 1
+                txt.insert("end", "   ")
+                txt.insert("end", flag, ("flag", tag))
+                txt.insert("end", "\n      " + desc + "\n")
+                txt.tag_bind(tag, "<Button-1>", lambda _e, fl=flag: self._insert_extra(fl))
+                txt.tag_bind(tag, "<Enter>", lambda _e: txt.config(cursor="hand2"))
+                txt.tag_bind(tag, "<Leave>", lambda _e: txt.config(cursor="arrow"))
+        txt.configure(state="disabled")
+
+        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
+        win.bind("<Escape>", lambda _e: win.destroy())
+
+    def _insert_extra(self, flag):
+        """Append a glossary flag to the Extra args field and reveal it."""
+        cur = self.extra_var.get().strip()
+        self.extra_var.set((cur + " " + flag).strip())
+        if self.view_var.get() != "advanced":
+            self.view_var.set("advanced")
+            self._apply_view()
+        self.status_var.set("Added to Extra args:  " + flag)
 
     # -- Queue management ---------------------------------------------------
     def _add_to_queue(self):

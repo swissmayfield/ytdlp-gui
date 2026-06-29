@@ -24,6 +24,7 @@ open Help from the menu bar — your choices are remembered.*
 - Live progress bar with speed/ETA, and a summary of what succeeded or failed
 - Simple / Advanced views to hide or show the power-user options
 - Menu bar with in-app Help, plus Tools (update yt-dlp, open download/settings folders)
+- Built-in glossary of useful yt-dlp flags — click one to insert it into Extra args
 - Light and dark themes, toggled in-app
 - Remembers your settings between runs
 
@@ -59,7 +60,7 @@ On Windows you can also just double-click `run.bat`.
 4. Pick a folder and any options you want, then **Download**.
 
 Use the **View** menu to switch between Simple and Advanced, toggle Dark mode, or
-find **Help** for a quick how-to and the extra-args examples.
+find **Help** for a quick how-to and the extra-args glossary.
 
 ### Extra arguments
 
@@ -72,6 +73,11 @@ can reach features the UI doesn't have a control for:
 | `--download-sections "*10:00-10:30"` | Download just that clip |
 | `--cookies-from-browser chrome` | Use your logged-in browser session |
 | `-N 4` | Download fragments in parallel (faster) |
+
+The built-in **Help → Extra-args glossary** lists many more, grouped by purpose —
+click any flag to drop it straight into the Extra args box.
+
+![Extra-args glossary](docs/glossary.png)
 
 ### Uploading to a remote (rclone)
 
