@@ -1,9 +1,13 @@
 name: CI
 
+# Manual trigger only, because GitHub Actions is currently disabled on this
+# account. To run automatically again, restore the push / pull_request triggers:
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:

@@ -1,6 +1,5 @@
 # yt-dlp GUI
 
-[![CI](https://github.com/swissmayfield/ytdlp-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/swissmayfield/ytdlp-gui/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 
