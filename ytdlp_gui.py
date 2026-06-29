@@ -28,11 +28,28 @@ import re
 import sys
 import json
 import shlex
+import shutil
 import threading
 import subprocess
 import queue
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+
+
+def ytdlp_base():
+    """Command prefix for invoking yt-dlp.
+
+    From source we run the module with the current interpreter. In a packaged
+    PyInstaller build, sys.executable is the GUI .exe (not a Python), so we use a
+    bundled yt-dlp.exe if present, otherwise one found on PATH.
+    """
+    if getattr(sys, "frozen", False):
+        bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "yt-dlp.exe")
+        if os.path.exists(bundled):
+            return [bundled]
+        found = shutil.which("yt-dlp")
+        return [found] if found else ["yt-dlp"]
+    return [sys.executable, "-m", "yt_dlp"]
 
 
 # ---------------------------------------------------------------------------
@@ -575,8 +592,7 @@ class YtDlpGui:
 
     def _fetch_worker(self, url):
         """Worker thread: ask yt-dlp for the video's metadata as JSON."""
-        cmd = [sys.executable, "-m", "yt_dlp", "--dump-json", "--no-playlist",
-               "--no-warnings", url]
+        cmd = [*ytdlp_base(), "--dump-json", "--no-playlist", "--no-warnings", url]
         try:
             flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
             res = subprocess.run(cmd, capture_output=True, text=True,
@@ -629,6 +645,12 @@ class YtDlpGui:
     def _update_ytdlp(self):
         if self.busy:
             return
+        if getattr(sys, "frozen", False):
+            messagebox.showinfo(
+                "Update yt-dlp",
+                "This packaged build bundles yt-dlp. To update, download a newer "
+                "release of the app from GitHub.")
+            return
         self._set_busy(True)
         self.status_var.set("Updating yt-dlp…")
         self._log_line("\n=== Updating yt-dlp (pip install -U yt-dlp) ===\n")
@@ -644,7 +666,7 @@ class YtDlpGui:
 
     def _build_command(self, url):
         """Assemble the yt-dlp argument list from the current UI state."""
-        cmd = [sys.executable, "-m", "yt_dlp", "--newline", "--no-color"]
+        cmd = [*ytdlp_base(), "--newline", "--no-color"]
 
         # A specific format (from Fetch) overrides the preset. We append best
         # audio with a fallback: "<id>+ba/<id>" merges audio if the chosen
@@ -802,7 +824,7 @@ class YtDlpGui:
         # Show the version we ended up with.
         try:
             flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-            ver = subprocess.run([sys.executable, "-m", "yt_dlp", "--version"],
+            ver = subprocess.run([*ytdlp_base(), "--version"],
                                  capture_output=True, text=True, creationflags=flags).stdout.strip()
             if ver:
                 self._log_line(f"\nyt-dlp version is now {ver}\n")

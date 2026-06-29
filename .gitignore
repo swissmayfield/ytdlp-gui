@@ -13,3 +13,9 @@ Thumbs.db
 *.part
 *.ytdl
 *.temp.*
+
+# PyInstaller build artifacts (the .exe ships via GitHub Releases, not git)
+build/
+dist/
+*.spec
+build_assets/

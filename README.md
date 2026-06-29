@@ -11,6 +11,13 @@ dependencies — just the standard library's `tkinter`.
 *Simple view (light) and Advanced view (dark). Switch views, toggle the theme, and
 open Help from the menu bar — your choices are remembered.*
 
+## Download
+
+A prebuilt Windows `.exe` (no Python install needed) is available on the
+[Releases page](https://github.com/swissmayfield/ytdlp-gui/releases). It bundles
+yt-dlp, so it works out of the box — you only need **ffmpeg** on your PATH for
+merging video+audio and MP3 export. Or run from source (see below).
+
 ## Features
 
 - Queue multiple URLs and download them one after another
@@ -107,6 +114,22 @@ yt-dlp's `[download]  NN.N%` lines.
 
 Settings and the download archive are stored in `%APPDATA%\ytdlp-gui\` on Windows,
 or `~/.config/ytdlp-gui/` on macOS/Linux.
+
+When packaged with PyInstaller, `sys.executable` is the GUI exe rather than a
+Python interpreter, so the app calls a bundled (or PATH) `yt-dlp.exe` instead of
+`python -m yt_dlp`. See `ytdlp_base()`.
+
+## Building the .exe
+
+```
+py -m pip install -U pyinstaller
+# put a standalone yt-dlp.exe (from yt-dlp's releases) in build_assets/
+pyinstaller --noconfirm --windowed --onefile --name ytdlp-gui \
+    --add-binary "build_assets/yt-dlp.exe;." ytdlp_gui.py
+```
+
+The result is `dist/ytdlp-gui.exe`. (On macOS/Linux use `:` instead of `;` in
+`--add-binary`.)
 
 ## A note on what this is for
 
