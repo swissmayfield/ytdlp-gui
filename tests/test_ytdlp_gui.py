@@ -6,6 +6,7 @@ remote validator, and config loading. Importing the module pulls in tkinter but
 never creates a window, so the suite runs headless.
 """
 
+import os
 import sys
 
 import pytest
@@ -17,6 +18,23 @@ from ytdlp_gui import YtDlpGui
 def test_ytdlp_base_from_source():
     base = g.ytdlp_base()
     assert base == [sys.executable, "-m", "yt_dlp"]
+
+
+def test_ytdlp_base_frozen_prefers_bundled(tmp_path, monkeypatch):
+    # Simulate a packaged build with the bundled binary present.
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    name = "yt-dlp.exe" if os.name == "nt" else "yt-dlp"
+    (tmp_path / name).write_bytes(b"")
+    assert g.ytdlp_base() == [os.path.join(str(tmp_path), name)]
+
+
+def test_ytdlp_base_frozen_falls_back_to_path(tmp_path, monkeypatch):
+    # Frozen but no bundled binary -> fall back to one found on PATH.
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.setattr("shutil.which", lambda _name: "/opt/bin/yt-dlp")
+    assert g.ytdlp_base() == ["/opt/bin/yt-dlp"]
 
 
 @pytest.mark.parametrize("seconds,expected", [
