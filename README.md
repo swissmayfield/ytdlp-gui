@@ -123,13 +123,12 @@ Python interpreter, so the app calls a bundled (or PATH) `yt-dlp.exe` instead of
 
 ```
 py -m pip install -U pyinstaller
-# put a standalone yt-dlp.exe (from yt-dlp's releases) in build_assets/
-pyinstaller --noconfirm --windowed --onefile --name ytdlp-gui \
-    --add-binary "build_assets/yt-dlp.exe;." ytdlp_gui.py
+py build.py
 ```
 
-The result is `dist/ytdlp-gui.exe`. (On macOS/Linux use `:` instead of `;` in
-`--add-binary`.)
+`build.py` downloads a pinned `yt-dlp.exe`, verifies its SHA-256 against the hash
+published by the yt-dlp project (aborting on mismatch), bundles it, and runs
+PyInstaller. The result is `dist/ytdlp-gui.exe`.
 
 ## A note on what this is for
 
@@ -145,6 +144,18 @@ Things that could be added later:
 - Per-item status in the queue (queued / downloading / done / failed)
 - Thumbnail preview (would require Pillow)
 - Packaging as a standalone `.exe` with PyInstaller
+
+## Security notes
+
+- External tools are always invoked with argument **lists**, never a shell
+  string (`shell=True` is never used).
+- The rclone **Upload to** value is validated (`name:path`, no shell
+  metacharacters) before use, because yt-dlp runs `--exec` through the shell.
+- "Open … folder" only ever opens an existing directory, so a stray path can't
+  be executed via `os.startfile`.
+- The bundled `yt-dlp.exe` is **pinned and SHA-256-verified** at build time
+  (`build.py`).
+- yt-dlp does not bypass DRM; use only for content you're allowed to download.
 
 ## License
 

@@ -74,6 +74,11 @@ PERCENT_RE = re.compile(r"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")
 SPEED_RE   = re.compile(r"\bat\s+([\d.]+\s*[KMGT]?i?B/s)")
 ETA_RE     = re.compile(r"\bETA\s+([\d:]+)")
 
+# A safe rclone remote looks like "name:path" with no shell metacharacters. It is
+# interpolated into yt-dlp's --exec string (which yt-dlp runs via the shell), so
+# anything that could break out of the surrounding quotes is rejected.
+RCLONE_REMOTE_RE = re.compile(r"^[A-Za-z0-9_-]+:[A-Za-z0-9 _./@~-]*$")
+
 # Per-user config + download archive location.
 CONFIG_DIR   = os.path.join(
     os.environ.get("APPDATA") or os.path.expanduser("~/.config"), "ytdlp-gui"
@@ -439,7 +444,12 @@ class YtDlpGui:
             w.grid() if advanced else w.grid_remove()
 
     def _open_download_folder(self):
-        self._open_path(self.dir_var.get())
+        path = self.dir_var.get()
+        if not os.path.isdir(path):
+            messagebox.showwarning("Folder not found",
+                                   "The download folder doesn't exist yet.")
+            return
+        self._open_path(path)
 
     def _open_config_folder(self):
         os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -447,6 +457,10 @@ class YtDlpGui:
 
     @staticmethod
     def _open_path(path):
+        # Only ever open an existing *directory*. On Windows os.startfile would
+        # otherwise launch/execute whatever file the path points at.
+        if not os.path.isdir(path):
+            return
         try:
             if os.name == "nt":
                 os.startfile(path)  # noqa: S606 - opening a local folder in Explorer
@@ -703,8 +717,11 @@ class YtDlpGui:
         # Optional rclone upload. yt-dlp's --exec runs after the file is finished
         # and moved to its final name; %(filepath)q is the shell-quoted path, so
         # this becomes e.g.  rclone copy "C:\...\video.mp4" "gdrive:Movies"
+        # Only add the rclone upload step if the remote is well-formed. Because
+        # yt-dlp runs --exec through the shell, a malformed value — e.g. one
+        # injected via a tampered config — is dropped here rather than executed.
         remote = self.rclone_var.get().strip()
-        if remote:
+        if remote and RCLONE_REMOTE_RE.match(remote):
             verb = "move" if self.rclone_move_var.get() else "copy"
             cmd += ["--exec", f'after_move:rclone {verb} %(filepath)q "{remote}"']
 
@@ -722,6 +739,14 @@ class YtDlpGui:
             return
         if not os.path.isdir(self.dir_var.get()):
             messagebox.showwarning("Bad folder", "Pick a valid download folder.")
+            return
+        remote = self.rclone_var.get().strip()
+        if remote and not RCLONE_REMOTE_RE.match(remote):
+            messagebox.showwarning(
+                "Invalid upload remote",
+                'The "Upload to" value must look like "name:path", using only '
+                "letters, numbers, spaces and _ - . / @ ~. Configure remotes "
+                "with: rclone config")
             return
 
         self._save_config()
